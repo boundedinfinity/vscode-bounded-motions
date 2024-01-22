@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 import { controller } from "./bounded-motions";
 
 export function activate(context: vscode.ExtensionContext) {
-    regCmdSub(context, "bounded-motions.motionMode", () => {
+    regCmdSub(context, "bounded-motions.editor", () => {
         controller.handleCharacter({ text: "esc" });
     });
 
@@ -12,6 +12,8 @@ export function activate(context: vscode.ExtensionContext) {
             console.log(`type: ${JSON.stringify(event)}, other: ${args}`);
         }
     });
+
+    context.subscriptions.push(...controller.disposables());
 }
 
 function regCmdSub(

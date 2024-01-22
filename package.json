@@ -16,15 +16,15 @@
     "contributes": {
         "commands": [
             {
-                "command": "bounded-motions.motionMode",
+                "command": "bounded-motions.editor",
                 "title": "bounded-motions: Motion Mode"
             }
         ],
         "keybindings": [
             {
-                "command": "bounded-motions.motionMode",
+                "command": "bounded-motions.editor",
                 "key": "escape",
-                "when": "editorTextFocus && !bounded-motions.mode.MOTION"
+                "when": "editorTextFocus && !bounded-motions.editor.MOTION"
             }
         ]
     },

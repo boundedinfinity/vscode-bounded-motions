@@ -3,8 +3,8 @@ import { EditorMode } from "./mode";
 import { type Configuration } from "./configuration";
 
 type SetOpts = {
-    force?: boolean
-}
+    force?: boolean;
+};
 
 export class VsCodeContextManager {
     private mode: EditorMode;
@@ -12,7 +12,8 @@ export class VsCodeContextManager {
 
     constructor(private readonly config: Configuration) {
         Object.values(EditorMode).forEach((mode) => {
-            this.keys.set(mode, `${this.config.name}.context.${this.mode}`);
+            const key = `${this.config.name}.editor.${mode}`;
+            this.keys.set(mode, key);
         });
 
         this.mode = EditorMode.MOTION;
@@ -33,13 +34,9 @@ export class VsCodeContextManager {
     }
 
     set(mode: EditorMode, opts?: SetOpts): boolean {
-        if (this.in(mode) && !opts?.force) {
-            return false;
-        } else {
-            this.mode = mode;
-            this.sync();
-            return true;
-        }
+        this.mode = mode;
+        this.sync();
+        return true;
     }
 
     in(mode: EditorMode): boolean {

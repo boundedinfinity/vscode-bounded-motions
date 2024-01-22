@@ -20,7 +20,14 @@ type To =
 
 type By = "line" | "wrappedLine" | "character" | "halfLine";
 
-interface MoveArgs {
+export interface MoveCharacterArgs {
+    to: To;
+    by?: By;
+    value?: number;
+    select?: boolean;
+}
+
+export interface MoveWordArgs {
     to: To;
     by?: By;
     value?: number;
@@ -32,23 +39,24 @@ export class DocumentManager {
 
     // https://code.visualstudio.com/api/references/commands#cursorMove
 
-    move(args: MoveArgs) {
+    moveCharacter(args: MoveCharacterArgs) {
         vscode.commands.executeCommand("cursorMove", args);
     }
 
-    moveUp() {
-        this.move({ to: "up" });
-    }
+    moveWord(args: MoveWordArgs) {
+        const editor = vscode.window.activeTextEditor;
+        const cur = editor!.selection.active;
+        const line = editor!.document.lineAt(cur.line);
+        let count = args.value || 1
+        const regex = new RegExp('\w')
+        const matches = line.text.match(regex)
 
-    moveDown() {
-        this.move({ to: "down" });
-    }
+        for (const char of line.text) {
+            if(char === " ") {
+                count++
+            }
 
-    moveRight() {
-        this.move({ to: "right" });
-    }
 
-    moveLeft() {
-        this.move({ to: "left" });
+        }
     }
 }
