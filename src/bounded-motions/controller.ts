@@ -43,7 +43,7 @@ export class Controller {
     private readonly vsCodeContext: VsCodeContextManager;
     private readonly statusBar: VsCodeStatusBarManager;
     private readonly document: DocumentManager;
-    private readonly machine: Machine;
+    private readonly machine: Machine<any>;
     private readonly helper = new MotionContextHelper();
 
     constructor(config?: Configuration) {
@@ -78,9 +78,9 @@ export class Controller {
         }
     }
 
-    initMachine(): Machine {
+    initMachine(): Machine<{}> {
         return (
-            createMachine()
+            createMachine<{}>()
                 // =============================================================================
                 // EditorMode.EDIT
                 // =============================================================================

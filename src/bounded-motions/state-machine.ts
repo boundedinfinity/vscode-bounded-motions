@@ -1,9 +1,12 @@
-export function createMachine(opts?: MachineOpts): MachineBuilder {
+export function createMachine<T extends object>(
+    opts?: MachineOpts<T>
+): MachineBuilder<T> {
     return new MachineBuilder(opts);
 }
 
-interface MachineOpts {
+interface MachineOpts<T extends object> {
     debug?: boolean;
+    context?: T;
 }
 
 interface TransitionContext {
@@ -11,23 +14,37 @@ interface TransitionContext {
     state?: State<any>;
 }
 
-class MachineBuilder {
-    private machine: Machine;
+class StateBuilder<T extends object> {
+    machine: MachineBuilder<any>;
+    name: string;
+
+    constructor(machine: MachineBuilder<T>, name: string) {
+        this.machine = machine;
+        this.name = name;
+    }
+
+    context<T extends object>(context: T): StateBuilder<T> {
+        return this;
+    }
+}
+
+class MachineBuilder<T extends object> {
+    private machine: Machine<T>;
     private currentState?: State<any>;
     private transitions: TransitionContext[] = [];
 
-    constructor(opts?: MachineOpts) {
+    constructor(opts?: MachineOpts<T>) {
         this.machine = new Machine(opts);
     }
 
-    state<T extends object>(opts: StateOpts<T>): MachineBuilder {
-        this.currentState = new State<T>(this.machine, opts);
+    state<S extends object>(opts: StateOpts<S>): MachineBuilder<T> {
+        this.currentState = new State<S>(this.machine, opts);
         this.machine.states.set(this.currentState.name, this.currentState);
         if (opts.initial) this.machine.initial = this.currentState;
         return this;
     }
 
-    transitionHandler(opts: TransitionOpts): MachineBuilder {
+    transitionHandler(opts: TransitionOpts): MachineBuilder<T> {
         this.transitions.push({
             opts: opts,
             state: this.currentState,
@@ -36,14 +53,14 @@ class MachineBuilder {
         return this;
     }
 
-    transitionDefault(opts: DefaultTransitionOpts): MachineBuilder {
+    transitionDefault(opts: DefaultTransitionOpts): MachineBuilder<T> {
         return this.transitionHandler({
             ons: [(event: Event<any>) => true],
             actions: opts.actions,
         });
     }
 
-    transitionLiteral(opts: StringTransitionOpts): MachineBuilder {
+    transitionLiteral(opts: StringTransitionOpts): MachineBuilder<T> {
         const fns: TriggerFn[] = [];
         for (const on of opts.on) {
             fns.push((event: Event<any>): boolean => event.name === on);
@@ -55,7 +72,7 @@ class MachineBuilder {
         });
     }
 
-    transitinoRegex(opts: StringTransitionOpts): MachineBuilder {
+    transitinoRegex(opts: StringTransitionOpts): MachineBuilder<T> {
         const fns: TriggerFn[] = [];
         for (const trigger of opts.on) {
             const regex = new RegExp(trigger);
@@ -68,7 +85,7 @@ class MachineBuilder {
         });
     }
 
-    build(): Machine {
+    build(): Machine<T> {
         for (const context of this.transitions) {
             if (context.state) {
                 let target: State<any> | undefined;
@@ -101,28 +118,23 @@ class MachineBuilder {
     }
 }
 
-export class Machine {
+export class Machine<T extends object> {
     debug?: boolean;
     initial: State<any>;
     current: State<any>;
+    context?: T;
     states: Map<string, State<any>>;
 
-    constructor(opts?: MachineOpts) {
+    constructor(opts?: MachineOpts<T>) {
         this.debug = opts?.debug;
         this.states = new Map();
         this.initial = new State(this, { name: "DUMMY" });
         this.current = this.initial;
     }
 
-    start(): Machine {
+    start(): Machine<T> {
         this.current = this.initial;
         this.current.enters({ name: "START" });
-
-        for (const state of this.states.values()) {
-            for (const transition of state.transitions) {
-            }
-        }
-
         return this;
     }
 
@@ -152,8 +164,10 @@ class State<T extends object> {
     transitionDefault?: Transition;
     resetContextOnExit?: boolean;
     resetContextOnEnter?: boolean;
+    states: State<any>[];
+    current?: State<any>;
 
-    constructor(private readonly machine: Machine, opts: StateOpts<T>) {
+    constructor(private readonly machine: Machine<any>, opts: StateOpts<T>) {
         this.name = opts.name;
         this.initialContext = opts.context;
         this.context = this.initialContext;
@@ -161,6 +175,7 @@ class State<T extends object> {
         this.resetContextOnEnter = opts.resetContextOnEnter;
         this.enter = opts.enter || [];
         this.exit = opts.exit || [];
+        this.states = [];
     }
 
     enters(event: Event<any>) {
@@ -184,14 +199,18 @@ class State<T extends object> {
     }
 
     emit(event: Event<any>) {
-        for (const transition of this.transitions) {
-            if (transition.handles(event)) {
-                transition.execute(event);
-                return;
+        if (this.current) {
+            this.current.emit(event);
+        } else {
+            for (const transition of this.transitions) {
+                if (transition.handles(event)) {
+                    transition.execute(event);
+                    return;
+                }
             }
-        }
 
-        this.transitionDefault?.execute(event);
+            this.transitionDefault?.execute(event);
+        }
     }
 }
 
@@ -216,7 +235,7 @@ interface DefaultTransitionOpts {
 
 class Transition {
     constructor(
-        readonly machine: Machine,
+        readonly machine: Machine<any>,
         readonly fn: TriggerFn[],
         readonly actions: { (event: Event<any>, context?: any): void }[],
         readonly target: State<any>,
